@@ -30,6 +30,19 @@ type Props = {
   supabaseEnabled: boolean;
 };
 
+function clearClaimParams() {
+  const url = new URL(window.location.href);
+  [
+    "claimed",
+    "receipt_id",
+    "payment_id",
+    "checkout_status",
+    "status",
+    "state_id",
+  ].forEach((key) => url.searchParams.delete(key));
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 export function HomeClient({ initialPlots, payments, supabaseEnabled }: Props) {
   const [plots, setPlots] = useState(initialPlots);
   const [selected, setSelected] = useState<string | null>(null);
@@ -41,8 +54,53 @@ export function HomeClient({ initialPlots, payments, supabaseEnabled }: Props) {
   );
 
   useEffect(() => {
-    const claimed = new URLSearchParams(window.location.search).get("claimed");
-    if (claimed) setSelected(claimed);
+    const params = new URLSearchParams(window.location.search);
+    const claimed = params.get("claimed");
+    if (!claimed) return;
+
+    const paid =
+      params.get("checkout_status") === "success" ||
+      params.get("status") === "success" ||
+      Boolean(params.get("payment_id") || params.get("receipt_id"));
+
+    if (!paid) {
+      setSelected(claimed);
+      return;
+    }
+
+    let cancelled = false;
+    async function showSuccess() {
+      // Webhook may land a moment after the redirect.
+      for (let i = 0; i < 8; i++) {
+        try {
+          const res = await fetch("/api/plots", { cache: "no-store" });
+          const json = await res.json();
+          const next = (json.plots as PlotRecord[] | undefined) ?? [];
+          if (cancelled) return;
+          if (next.length) setPlots(next);
+          const plot = next.find((p) => p.slug === claimed);
+          if (plot?.ownerName) {
+            if (plot.ownerEmail) rememberOwnership(plot.slug, plot.ownerEmail);
+            setWon(plot);
+            setSelected(null);
+            clearClaimParams();
+            return;
+          }
+        } catch {
+          // retry
+        }
+        await new Promise((r) => window.setTimeout(r, 700));
+      }
+      if (!cancelled) {
+        // Fall back to the claim drawer if fulfillment is still pending.
+        setSelected(claimed);
+        clearClaimParams();
+      }
+    }
+    void showSuccess();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
