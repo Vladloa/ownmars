@@ -21,6 +21,10 @@ export function hasCryptomus() {
   return Boolean(env("CRYPTOMUS_MERCHANT_ID") && env("CRYPTOMUS_API_KEY"));
 }
 
+export function hasWhop() {
+  return Boolean(env("WHOP_API_KEY") && env("WHOP_COMPANY_ID"));
+}
+
 export function hasResend() {
   return Boolean(env("RESEND_API_KEY"));
 }

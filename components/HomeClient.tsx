@@ -17,7 +17,12 @@ const MarsGlobe = dynamic(() => import("./MarsGlobe").then((m) => m.MarsGlobe), 
   ),
 });
 
-type Payments = { paddle: boolean; cryptomus: boolean; devSimulate: boolean };
+type Payments = {
+  whop: boolean;
+  paddle: boolean;
+  cryptomus: boolean;
+  devSimulate: boolean;
+};
 
 type Props = {
   initialPlots: PlotRecord[];

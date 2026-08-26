@@ -3,7 +3,12 @@ import { catalogBySlug } from "@/lib/plots-catalog";
 import { getPlot } from "@/lib/store";
 import { amountForMultiplier, minBidCents } from "@/lib/pricing";
 import { isValidHttpUrl, normalizeUrl } from "@/lib/url";
-import { createCryptomusInvoice, createPaddleCheckout, paymentStatus } from "@/lib/payments";
+import {
+  createCryptomusInvoice,
+  createPaddleCheckout,
+  createWhopCheckout,
+  paymentStatus,
+} from "@/lib/payments";
 import type { BidMultiplier } from "@/lib/types";
 
 export async function POST(req: Request) {
@@ -14,7 +19,7 @@ export async function POST(req: Request) {
     ownerUrl?: string;
     warCry?: string;
     ownerEmail?: string;
-    provider?: "paddle" | "cryptomus";
+    provider?: "whop" | "paddle" | "cryptomus";
   };
   const catalog = body.slug ? catalogBySlug(body.slug) : undefined;
   const plot = body.slug ? await getPlot(body.slug) : null;
@@ -43,7 +48,18 @@ export async function POST(req: Request) {
     warCry,
     ownerEmail: email,
   };
-  if (body.provider === "paddle") {
+
+  const provider = body.provider ?? (status.whop ? "whop" : undefined);
+
+  if (provider === "whop") {
+    if (!status.whop) {
+      return NextResponse.json({ error: "Whop payments are not configured yet" }, { status: 503 });
+    }
+    const checkout = await createWhopCheckout(payload);
+    if (!checkout.ok) return NextResponse.json({ error: checkout.error }, { status: 502 });
+    return NextResponse.json({ checkoutUrl: checkout.checkoutUrl, checkoutId: checkout.checkoutId });
+  }
+  if (provider === "paddle") {
     if (!status.paddle) {
       return NextResponse.json({ error: "Card payments are not configured yet" }, { status: 503 });
     }
@@ -51,7 +67,7 @@ export async function POST(req: Request) {
     if (!checkout.ok) return NextResponse.json({ error: checkout.error }, { status: 502 });
     return NextResponse.json({ checkoutUrl: checkout.checkoutUrl, transactionId: checkout.transactionId });
   }
-  if (body.provider === "cryptomus") {
+  if (provider === "cryptomus") {
     if (!status.cryptomus) {
       return NextResponse.json({ error: "Crypto payments are not configured yet" }, { status: 503 });
     }

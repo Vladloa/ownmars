@@ -22,7 +22,12 @@ import {
 } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTab } from "@/components/ui/tabs";
 
-type Payments = { paddle: boolean; cryptomus: boolean; devSimulate: boolean };
+type Payments = {
+  whop: boolean;
+  paddle: boolean;
+  cryptomus: boolean;
+  devSimulate: boolean;
+};
 
 type Props = {
   plot: PlotRecord | null;
@@ -40,7 +45,7 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
   const [ownerUrl, setOwnerUrl] = useState("");
   const [warCry, setWarCry] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"paddle" | "cryptomus" | "dev" | null>(null);
+  const [busy, setBusy] = useState<"whop" | "dev" | null>(null);
 
   useEffect(() => {
     if (plot) {
@@ -58,9 +63,9 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
 
   const min = drawnPlot ? minBidCents(drawnPlot) : 0;
   const logo = drawnPlot ? faviconUrl(drawnPlot.ownerUrl) : null;
-  const configured = payments.paddle || payments.cryptomus || payments.devSimulate;
+  const configured = payments.whop || payments.devSimulate;
 
-  async function submit(provider: "paddle" | "cryptomus" | "dev") {
+  async function submit(provider: "whop" | "dev") {
     if (!plot) return;
     const current = plot;
     setError(null);
@@ -76,7 +81,7 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
           ownerName,
           ownerUrl,
           warCry,
-          provider: provider === "dev" ? undefined : provider,
+          provider: provider === "dev" ? undefined : "whop",
         }),
       });
       const json = await res.json();
@@ -209,7 +214,7 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
                 <CircleAlertIcon />
                 <AlertTitle>Payments not configured</AlertTitle>
                 <AlertDescription>
-                  Add Paddle / Cryptomus keys to enable checkout.
+                  Add Whop API keys to enable checkout.
                 </AlertDescription>
               </Alert>
             )}
@@ -218,21 +223,11 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
             <Button
               size="lg"
               className="w-full text-lg sm:text-lg"
-              disabled={!payments.paddle || Boolean(busy)}
-              loading={busy === "paddle"}
-              onClick={() => submit("paddle")}
+              disabled={!payments.whop || Boolean(busy)}
+              loading={busy === "whop"}
+              onClick={() => submit("whop")}
             >
-              Pay with card · Claim for {formatUsd(amount)}
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full text-lg sm:text-lg"
-              disabled={!payments.cryptomus || Boolean(busy)}
-              loading={busy === "cryptomus"}
-              onClick={() => submit("cryptomus")}
-            >
-              Pay with crypto · {formatUsd(amount)}
+              Pay with Whop · Claim for {formatUsd(amount)}
             </Button>
             {payments.devSimulate && (
               <Button

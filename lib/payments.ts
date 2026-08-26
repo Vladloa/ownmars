@@ -1,12 +1,94 @@
-import { createHmac, createHash } from "crypto";
-import { appUrl, env, hasCryptomus, hasPaddle, paddleSandbox } from "./env";
+import { createHmac, createHash, timingSafeEqual } from "crypto";
+import { appUrl, env, hasCryptomus, hasPaddle, hasWhop, paddleSandbox } from "./env";
 
 export function paymentStatus() {
   return {
+    whop: hasWhop(),
     paddle: hasPaddle(),
     cryptomus: hasCryptomus(),
     devSimulate: process.env.NODE_ENV !== "production",
   };
+}
+
+export async function createWhopCheckout(opts: {
+  slug: string;
+  plotName: string;
+  amountCents: number;
+  ownerName: string;
+  ownerUrl: string;
+  warCry: string;
+  ownerEmail: string;
+}) {
+  if (!hasWhop()) return { ok: false as const, error: "Whop is not configured" };
+  const price = opts.amountCents / 100;
+  const res = await fetch("https://api.whop.com/api/v1/checkout_configurations", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${env("WHOP_API_KEY")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      account_id: env("WHOP_COMPANY_ID"),
+      mode: "payment",
+      redirect_url: `${appUrl()}/?claimed=${opts.slug}`,
+      metadata: {
+        slug: opts.slug,
+        amountCents: String(opts.amountCents),
+        ownerName: opts.ownerName,
+        ownerUrl: opts.ownerUrl,
+        warCry: opts.warCry,
+        ownerEmail: opts.ownerEmail,
+      },
+      plan: {
+        plan_type: "one_time",
+        currency: "usd",
+        initial_price: price,
+        title: `OwnMars · ${opts.plotName}`,
+        description: `Claim ${opts.plotName} for $${price.toFixed(2)}`,
+        force_create_new_plan: true,
+      },
+    }),
+  });
+  const json = (await res.json()) as {
+    id?: string;
+    purchase_url?: string;
+    error?: { message?: string };
+    message?: string;
+  };
+  if (!res.ok || !json.purchase_url) {
+    return {
+      ok: false as const,
+      error: json.error?.message || json.message || "Whop checkout failed",
+    };
+  }
+  return {
+    ok: true as const,
+    checkoutUrl: json.purchase_url,
+    checkoutId: json.id,
+  };
+}
+
+export function verifyWhopWebhook(rawBody: string, headers: Headers) {
+  const secret = env("WHOP_WEBHOOK_SECRET");
+  if (!secret) return false;
+  const id = headers.get("webhook-id");
+  const timestamp = headers.get("webhook-timestamp");
+  const signatureHeader = headers.get("webhook-signature");
+  if (!id || !timestamp || !signatureHeader) return false;
+  const ageSec = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(ageSec) || ageSec > 300) return false;
+  const expected = createHmac("sha256", secret)
+    .update(`${id}.${timestamp}.${rawBody}`)
+    .digest("base64");
+  const candidates = signatureHeader
+    .split(/\s+/)
+    .map((part) => part.replace(/^v1,/, "").trim())
+    .filter(Boolean);
+  const expectedBuf = Buffer.from(expected);
+  return candidates.some((candidate) => {
+    const got = Buffer.from(candidate);
+    return got.length === expectedBuf.length && timingSafeEqual(got, expectedBuf);
+  });
 }
 
 export async function createPaddleCheckout(opts: {

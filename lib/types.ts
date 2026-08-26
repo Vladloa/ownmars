@@ -27,7 +27,7 @@ export type ClaimPayload = {
   ownerUrl: string;
   warCry: string;
   ownerEmail: string;
-  provider: "paddle" | "cryptomus" | "dev";
+  provider: "paddle" | "cryptomus" | "whop" | "dev";
   providerRef: string;
 };
 
