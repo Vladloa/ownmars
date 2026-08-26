@@ -53,6 +53,18 @@ Webhook URLs (each domain):
 
 Put secrets in Railway Variables, not in git. `NODE_ENV=production` on both deploys — the local **Dev: simulate payment** button stays off.
 
+### First-time GitHub + Railway
+
+GitHub CLI is not logged in on this machine yet. After you authenticate:
+
+```bash
+gh auth login
+railway login
+./scripts/bootstrap-github-railway.sh ownmars
+```
+
+That creates a **private** `ownmars` repo, pushes `main` and `staging`, then prints Railway dashboard steps.
+
 ### First-time Railway setup
 
 ```bash
