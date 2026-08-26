@@ -49,6 +49,9 @@ async function createWhopPlan(opts: WhopCheckoutOpts) {
     title: `OwnMars · ${opts.plotName}`,
     description: `Claim ${opts.plotName} for $${price.toFixed(2)}`,
     visibility: "visible",
+    // Sandbox plan checkouts often drop checkout_configuration metadata.
+    // Persist claim fields on the plan so webhooks can still fulfill.
+    metadata: claimMetadata(opts),
   };
   if (productId) body.product_id = productId;
   const res = await fetch(`${whopApiBase()}/plans`, {
@@ -101,7 +104,7 @@ export async function createWhopCheckout(opts: WhopCheckoutOpts) {
       message?: string;
     };
     if (!res.ok || !json.purchase_url) {
-      // Fallback to the plan purchase URL if configuration create fails.
+      // Plan already carries claim metadata; plan URL is a safe fallback.
       if (plan.purchaseUrl) {
         return { ok: true as const, checkoutUrl: plan.purchaseUrl, checkoutId: plan.planId };
       }
@@ -132,6 +135,7 @@ export async function createWhopCheckout(opts: WhopCheckoutOpts) {
         title: `OwnMars · ${opts.plotName}`,
         description: `Claim ${opts.plotName} for $${price.toFixed(2)}`,
         force_create_new_plan: true,
+        metadata,
       },
     }),
   });
@@ -152,6 +156,56 @@ export async function createWhopCheckout(opts: WhopCheckoutOpts) {
     checkoutUrl: json.purchase_url,
     checkoutId: json.id,
   };
+}
+
+type WhopMeta = Record<string, string | number | null | undefined>;
+
+function asMeta(value: unknown): WhopMeta {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return value as WhopMeta;
+}
+
+async function whopGet<T>(path: string): Promise<T | null> {
+  if (!hasWhop()) return null;
+  const res = await fetch(`${whopApiBase()}${path}`, {
+    headers: { Authorization: `Bearer ${env("WHOP_API_KEY")}` },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as T;
+}
+
+/** Resolve claim fields from payment metadata, then plan metadata. */
+export async function resolveWhopClaimMetadata(payment: {
+  id?: string;
+  metadata?: WhopMeta;
+  plan?: { id?: string; metadata?: WhopMeta };
+}) {
+  let meta = asMeta(payment.metadata);
+  if (meta.slug && meta.ownerName && meta.ownerUrl && meta.amountCents) return meta;
+
+  const fresh = payment.id
+    ? await whopGet<{
+        metadata?: WhopMeta;
+        plan?: { id?: string; metadata?: WhopMeta };
+      }>(`/payments/${payment.id}`)
+    : null;
+  if (fresh) {
+    meta = { ...asMeta(fresh.metadata), ...meta };
+    if (!payment.plan?.id && fresh.plan?.id) {
+      payment = { ...payment, plan: fresh.plan };
+    }
+  }
+  if (meta.slug && meta.ownerName && meta.ownerUrl && meta.amountCents) return meta;
+
+  const planId = payment.plan?.id;
+  const planMeta = asMeta(payment.plan?.metadata);
+  meta = { ...planMeta, ...meta };
+  if ((!meta.slug || !meta.ownerName) && planId) {
+    const plan = await whopGet<{ metadata?: WhopMeta }>(`/plans/${planId}`);
+    meta = { ...asMeta(plan?.metadata), ...meta };
+  }
+  return meta;
 }
 
 export function verifyWhopWebhook(rawBody: string, headers: Headers) {

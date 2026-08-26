@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { completePaidClaim } from "@/lib/complete-claim";
-import { verifyWhopWebhook } from "@/lib/payments";
+import { resolveWhopClaimMetadata, verifyWhopWebhook } from "@/lib/payments";
 
 type WhopPaymentEvent = {
   type?: string;
@@ -8,6 +8,11 @@ type WhopPaymentEvent = {
   data?: {
     id?: string;
     metadata?: Record<string, string | number | null | undefined>;
+    plan?: {
+      id?: string;
+      metadata?: Record<string, string | number | null | undefined>;
+    };
+    user?: { email?: string | null };
   };
 };
 
@@ -28,14 +33,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, ignored: true, type });
   }
 
-  const meta = event.data?.metadata ?? {};
+  const meta = await resolveWhopClaimMetadata(event.data ?? {});
   const result = await completePaidClaim({
     slug: metaString(meta, "slug"),
     amountCents: Number(metaString(meta, "amountCents")),
     ownerName: metaString(meta, "ownerName"),
     ownerUrl: metaString(meta, "ownerUrl"),
     warCry: metaString(meta, "warCry"),
-    ownerEmail: metaString(meta, "ownerEmail"),
+    ownerEmail: metaString(meta, "ownerEmail") || event.data?.user?.email || "",
     provider: "whop",
     providerRef: event.data?.id || "whop",
   });
