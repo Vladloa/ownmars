@@ -26,8 +26,8 @@ export async function POST(req: Request) {
   const name = (body.ownerName ?? "").trim();
   const url = (body.ownerUrl ?? "").trim();
   const email = (body.ownerEmail ?? "").trim();
-  if (!name || !isValidHttpUrl(url) || !email.includes("@")) {
-    return NextResponse.json({ error: "Name, valid URL and email are required" }, { status: 400 });
+  if (!name || !isValidHttpUrl(url)) {
+    return NextResponse.json({ error: "Name and a valid URL are required" }, { status: 400 });
   }
   const multiplier: BidMultiplier = body.multiplier ?? "min";
   const amountCents = amountForMultiplier(plot, multiplier);

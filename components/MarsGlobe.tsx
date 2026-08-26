@@ -8,6 +8,7 @@ import type { OrbitControls as OrbitControlsType } from "three-stdlib";
 import type { PlotRecord } from "@/lib/types";
 import { buildSphereCells, type Point3 } from "@/lib/sphere-cells";
 import { faviconUrl } from "@/lib/url";
+import { Starfield } from "@/components/Starfield";
 
 type Props = {
   plots: PlotRecord[];
@@ -142,11 +143,11 @@ function OwnerBadge({ name, logo }: { name: string; logo: string | null }) {
           onError={() => setBroken(true)}
         />
       ) : (
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-claimed/30 text-xs font-semibold text-white">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-claimed/30 text-[13px] font-semibold text-white">
           {letter}
         </span>
       )}
-      <span className="truncate pr-1.5 text-[11px] font-medium leading-none text-white">{name}</span>
+      <span className="truncate pr-1.5 text-[13px] font-medium leading-none text-white">{name}</span>
     </div>
   );
 }
@@ -271,13 +272,14 @@ function Controls() {
 export function MarsGlobe({ plots, selectedSlug, onSelect }: Props) {
   const claimed = plots.filter((p) => p.ownerName).length;
   return (
-    <div className="relative z-0 isolate h-[min(72vh,720px)] w-full overflow-hidden rounded-3xl border border-white/10 bg-[#08090c]">
+    <div className="relative z-0 isolate h-full min-h-0 w-full overflow-hidden rounded-3xl border border-white/10">
+      <Starfield />
       <Canvas
-        className="touch-none cursor-grab"
+        className="relative z-[1] touch-none cursor-grab"
         camera={{ position: [0, 0.12, 3.05], fov: 42, near: 0.1, far: 40 }}
-        gl={{ antialias: true, alpha: false }}
+        gl={{ antialias: true, alpha: true }}
         onCreated={({ gl }) => {
-          gl.setClearColor("#08090c");
+          gl.setClearColor(0x000000, 0);
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.35;
         }}
@@ -288,7 +290,7 @@ export function MarsGlobe({ plots, selectedSlug, onSelect }: Props) {
           <Controls />
         </Suspense>
       </Canvas>
-      <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-white/10 bg-black/50 px-3 py-1 font-mono text-[11px] uppercase tracking-widest text-dust">
+      <div className="pointer-events-none absolute left-4 top-4 z-[2] rounded-full border border-white/10 bg-black/50 px-3 py-1 font-mono text-[13px] uppercase tracking-widest text-dust">
         Click a region to bid · {claimed}/50 claimed
       </div>
     </div>

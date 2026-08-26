@@ -5,8 +5,7 @@
 
 @theme inline {
   --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-heading), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-heading: var(--font-heading), var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -199,7 +198,9 @@
 
   html,
   body {
-    min-height: 100%;
+    height: 100svh;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   body {
@@ -212,6 +213,189 @@
   h4,
   h5,
   h6 {
-    font-family: var(--font-heading), var(--font-sans), system-ui, sans-serif;
+    font-family: var(--font-sans), system-ui, sans-serif;
+  }
+}
+
+.checkmark {
+  --curve: cubic-bezier(0.42, 0, 0.275, 1.155);
+  --time: 1.4s;
+  position: relative;
+  width: 144px;
+  height: 140px;
+  margin-inline: auto;
+  padding: 24px;
+  overflow: visible;
+  animation: checkmark 1.4s var(--curve) both;
+}
+
+.checkmark .confetti {
+  position: absolute;
+  overflow: visible;
+  animation: grow var(--time) var(--curve) both;
+}
+
+.checkmark .confetti path,
+.checkmark__back path {
+  fill: #3dcc7a;
+}
+
+.checkmark .confetti:nth-child(1) {
+  width: 10px;
+  height: 10px;
+  left: 10px;
+  top: 13px;
+  animation-delay: 0.7s;
+}
+
+.checkmark .confetti:nth-child(2) {
+  width: 14px;
+  height: 14px;
+  left: 134px;
+  top: 67px;
+  animation-delay: 1.4s;
+}
+
+.checkmark .confetti:nth-child(3) {
+  width: 8px;
+  height: 8px;
+  left: 26px;
+  top: 130px;
+  animation-delay: 2.1s;
+}
+
+.checkmark .confetti:nth-child(4) {
+  width: 16px;
+  height: 16px;
+  left: 66px;
+  top: -10px;
+  animation-delay: 2.8s;
+}
+
+.checkmark .confetti:nth-child(5) {
+  width: 11px;
+  height: 11px;
+  left: 100px;
+  top: 130px;
+  animation-delay: 3.5s;
+}
+
+.checkmark .confetti:nth-child(6) {
+  width: 8px;
+  height: 8px;
+  left: 13px;
+  top: 13px;
+  animation-delay: 4.2s;
+}
+
+.checkmark__check {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 10;
+  width: 38px;
+  height: 29px;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+.checkmark__back {
+  display: block;
+  width: 96px;
+  height: 92px;
+  animation: rotate 35s linear infinite;
+}
+
+@keyframes rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes grow {
+  0%,
+  100% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1);
+  }
+}
+
+@keyframes checkmark {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  10%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkmark,
+  .checkmark .confetti,
+  .checkmark__back {
+    animation: none;
+  }
+}
+
+.globe-starfield {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: radial-gradient(ellipse at bottom, #1a0c08 0%, #070504 100%);
+}
+
+.globe-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: transparent;
+}
+
+.globe-stars--sm {
+  width: 1px;
+  height: 1px;
+  animation: globe-stars-move 50s linear infinite;
+}
+
+.globe-stars--md {
+  width: 2px;
+  height: 2px;
+  animation: globe-stars-move 100s linear infinite;
+}
+
+.globe-stars--lg {
+  width: 3px;
+  height: 3px;
+  animation: globe-stars-move 150s linear infinite;
+}
+
+.globe-stars::after {
+  content: " ";
+  position: absolute;
+  top: 2000px;
+  left: 0;
+  width: inherit;
+  height: inherit;
+  background: transparent;
+  box-shadow: inherit;
+}
+
+@keyframes globe-stars-move {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-2000px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .globe-stars {
+    animation: none;
   }
 }

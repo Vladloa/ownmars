@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 const MarsGlobe = dynamic(() => import("./MarsGlobe").then((m) => m.MarsGlobe), {
   ssr: false,
   loading: () => (
-    <div className="h-[min(72vh,720px)] w-full animate-pulse rounded-3xl border border-white/10 bg-[#08090c]" />
+    <div className="h-full min-h-0 w-full animate-pulse rounded-3xl border border-white/10 bg-[#090a0f]" />
   ),
 });
 
@@ -80,18 +80,20 @@ export function HomeClient({ initialPlots, payments, supabaseEnabled }: Props) {
   const revenue = plots.reduce((sum, p) => sum + (p.ownerName ? p.currentPriceCents : 0), 0);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl flex-col px-4 pb-10 pt-6">
-      <LiveToasts plots={plots} />
-      <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-6xl flex-1 flex-col overflow-hidden px-4 py-3">
+      <LiveToasts plots={plots} ignoreSlug={won?.slug ?? null} />
+      <header className="mb-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <img
             src="/logo-ownmars.png"
             alt="Own Mars"
             className="h-[1.8rem] w-auto sm:h-[2.2rem]"
           />
-          <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Colonize Mars. $1 a plot.</h1>
-          <p className="mt-2 max-w-xl text-sm text-dust">
-            50 named territories. Pay $1 more than the current owner and your name, logo and war cry go on the map.
+          <h1 className="mt-2 text-4xl font-semibold tracking-tight max-sm:text-3xl sm:text-5xl">
+            Colonize Mars. $1 a plot.
+          </h1>
+          <p className="mt-1 max-w-xl text-base text-dust max-sm:hidden">
+            50 named territories. Pay $1 more than the current owner and your name, logo and slogan go on the map.
           </p>
           <StatsPill />
         </div>
@@ -104,19 +106,23 @@ export function HomeClient({ initialPlots, payments, supabaseEnabled }: Props) {
           </Badge>
         </div>
       </header>
-      <MarsGlobe plots={plots} selectedSlug={selected} onSelect={setSelected} />
-      <footer className="mt-8 flex flex-col gap-2 text-xs text-white/35 sm:flex-row sm:justify-between">
+      <div className="min-h-0 flex-1">
+        <MarsGlobe plots={plots} selectedSlug={selected} onSelect={setSelected} />
+      </div>
+      <footer className="mt-3 flex shrink-0 flex-col gap-1 text-[13px] text-white/35 sm:flex-row sm:justify-between">
         <p>Plots are permanent. No expiry. Whoever pays more owns the land.</p>
         <p>
           Globe: NASA/JPL-Caltech. Not affiliated with SpaceX. A game about claiming pixels on a dead planet.
         </p>
       </footer>
-      <ClaimDrawer
-        plot={selectedPlot}
-        payments={payments}
-        onClose={() => setSelected(null)}
-        onClaimed={onClaimed}
-      />
+      {!won && (
+        <ClaimDrawer
+          plot={selectedPlot}
+          payments={payments}
+          onClose={() => setSelected(null)}
+          onClaimed={onClaimed}
+        />
+      )}
       {won && <SuccessModal plot={won} onClose={() => setWon(null)} />}
     </div>
   );

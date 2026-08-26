@@ -1,20 +1,14 @@
 import type { Metadata } from "next";
-import { Montserrat, Roboto } from "next/font/google";
+import { Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import { DataFast } from "@/components/DataFast";
 import { Plausible } from "@/components/Plausible";
 import { Providers } from "@/components/Providers";
 
-const heading = Montserrat({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  weight: ["500", "600", "700"],
-});
-
-const sans = Roboto({
+const sans = Barlow_Condensed({
   subsets: ["latin"],
   variable: "--font-sans",
-  weight: ["400", "500", "700"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -29,9 +23,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${heading.variable} ${sans.variable} relative antialiased`}>
-        <div className="relative isolate flex min-h-svh flex-col">
+    <html lang="en" className="dark overflow-hidden overscroll-none">
+      <body className={`${sans.variable} relative h-svh overflow-hidden overscroll-none antialiased`}>
+        <div className="relative isolate flex h-svh min-h-0 flex-col overflow-hidden">
           <Providers>
             <DataFast />
             <Plausible />

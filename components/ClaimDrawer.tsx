@@ -1,13 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CircleAlertIcon } from "lucide-react";
 import type { BidMultiplier, PlotRecord } from "@/lib/types";
 import { amountForMultiplier, formatUsd, minBidCents } from "@/lib/pricing";
 import { faviconUrl } from "@/lib/url";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -21,7 +20,7 @@ import {
   SheetPanel,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Tabs, TabsList, TabsTab } from "@/components/ui/tabs";
 
 type Payments = { paddle: boolean; cryptomus: boolean; devSimulate: boolean };
 
@@ -32,28 +31,33 @@ type Props = {
   onClaimed: (plot: PlotRecord) => void;
 };
 
-const ZONE: Record<PlotRecord["tier"], string> = {
-  S: "Olympus Zone",
-  A: "Colony Zone",
-  B: "Outpost Zone",
-};
+const CLOSE_MS = 700;
 
 export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
+  const [drawnPlot, setDrawnPlot] = useState<PlotRecord | null>(plot);
   const [multiplier, setMultiplier] = useState<BidMultiplier>("min");
   const [ownerName, setOwnerName] = useState("");
   const [ownerUrl, setOwnerUrl] = useState("");
   const [warCry, setWarCry] = useState("");
-  const [ownerEmail, setOwnerEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"paddle" | "cryptomus" | "dev" | null>(null);
 
+  useEffect(() => {
+    if (plot) {
+      setDrawnPlot(plot);
+      return;
+    }
+    const timer = window.setTimeout(() => setDrawnPlot(null), CLOSE_MS);
+    return () => window.clearTimeout(timer);
+  }, [plot]);
+
   const amount = useMemo(
-    () => (plot ? amountForMultiplier(plot, multiplier) : 0),
-    [plot, multiplier],
+    () => (drawnPlot ? amountForMultiplier(drawnPlot, multiplier) : 0),
+    [drawnPlot, multiplier],
   );
 
-  const min = plot ? minBidCents(plot) : 0;
-  const logo = plot ? faviconUrl(plot.ownerUrl) : null;
+  const min = drawnPlot ? minBidCents(drawnPlot) : 0;
+  const logo = drawnPlot ? faviconUrl(drawnPlot.ownerUrl) : null;
   const configured = payments.paddle || payments.cryptomus || payments.devSimulate;
 
   async function submit(provider: "paddle" | "cryptomus" | "dev") {
@@ -72,7 +76,6 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
           ownerName,
           ownerUrl,
           warCry,
-          ownerEmail,
           provider: provider === "dev" ? undefined : provider,
         }),
       });
@@ -94,75 +97,79 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
 
   return (
     <Sheet open={Boolean(plot)} onOpenChange={(open) => { if (!open) onClose(); }}>
-      {plot && (
+      {drawnPlot && (
         <SheetContent side="right" className="z-50">
           <SheetHeader>
-            <Badge variant={plot.tier === "S" ? "default" : plot.tier === "A" ? "warning" : "secondary"}>
-              Tier {plot.tier} · {ZONE[plot.tier]}
-            </Badge>
-            <SheetTitle>{plot.name}</SheetTitle>
-            <SheetDescription>
-              Current stake {formatUsd(plot.currentPriceCents)} · min claim {formatUsd(min)}
+            <SheetTitle className="text-3xl">{drawnPlot.name}</SheetTitle>
+            <SheetDescription className="text-base">
+              Current stake {formatUsd(drawnPlot.currentPriceCents)} · min claim {formatUsd(min)}
             </SheetDescription>
           </SheetHeader>
           <SheetPanel className="flex flex-col gap-4">
             <Card>
               <CardHeader>
-                {plot.ownerName ? (
+                {drawnPlot.ownerName ? (
                   <div className="flex items-center gap-3">
                     <Avatar className="size-10 rounded-lg">
                       {logo ? <AvatarImage src={logo} alt="" /> : null}
                       <AvatarFallback className="rounded-lg">
-                        {plot.ownerName.slice(0, 1).toUpperCase()}
+                        {drawnPlot.ownerName.slice(0, 1).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <CardTitle className="truncate text-base">{plot.ownerName}</CardTitle>
-                      {plot.warCry && (
-                        <CardDescription className="truncate">{plot.warCry}</CardDescription>
+                      <CardTitle className="truncate text-xl">{drawnPlot.ownerName}</CardTitle>
+                      {drawnPlot.warCry && (
+                        <CardDescription className="truncate text-base">{drawnPlot.warCry}</CardDescription>
                       )}
-                      {plot.ownerUrl && (
+                      {drawnPlot.ownerUrl && (
                         <a
-                          href={`/r/${plot.slug}`}
-                          className="truncate text-xs text-success hover:underline"
+                          href={`/r/${drawnPlot.slug}`}
+                          className="truncate text-sm text-success hover:underline"
                           target="_blank"
                           rel="noreferrer"
                         >
-                          {plot.ownerUrl} · {plot.clickCount} clicks
+                          {drawnPlot.ownerUrl} · {drawnPlot.clickCount} clicks
                         </a>
                       )}
                     </div>
                   </div>
                 ) : (
                   <>
-                    <CardTitle className="text-base">Uninhabited territory</CardTitle>
-                    <CardDescription>No owner yet. First claim starts at {formatUsd(min)}.</CardDescription>
+                    <CardTitle className="text-xl">Uninhabited territory</CardTitle>
+                    <CardDescription className="text-base">
+                      No owner yet. First claim starts at {formatUsd(min)}.
+                    </CardDescription>
                   </>
                 )}
               </CardHeader>
             </Card>
 
-            <ToggleGroup
-              variant="outline"
-              className="grid w-full grid-cols-3"
-              value={[multiplier]}
-              onValueChange={(next) => {
-                const nextValue = next[0] as BidMultiplier | undefined;
-                if (nextValue) setMultiplier(nextValue);
-              }}
+            <Tabs
+              value={multiplier}
+              onValueChange={(value) => setMultiplier(value as BidMultiplier)}
+              className="w-full gap-0"
             >
-              {(["min", "2x", "5x"] as BidMultiplier[]).map((key) => (
-                <ToggleGroupItem key={key} value={key} className="flex-1 flex-col gap-0.5 py-3">
-                  <span>{key === "min" ? "Min" : key}</span>
-                  <span className="text-muted-foreground text-[11px] font-normal">
-                    {formatUsd(amountForMultiplier(plot, key))}
-                  </span>
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+              <TabsList size="lg" className="w-full bg-[#08090c]">
+                {(["min", "2x", "5x"] as BidMultiplier[]).map((key) => {
+                  const usd = formatUsd(amountForMultiplier(drawnPlot, key));
+                  return (
+                    <TabsTab
+                      key={key}
+                      value={key}
+                      className="h-11 min-h-11 flex-1 flex-col gap-0 py-0 text-base sm:text-base"
+                    >
+                      <span>{key === "min" ? "Min" : key}</span>
+                      <span className="text-[15px] font-normal text-primary opacity-80 in-data-active:opacity-100">
+                        {usd}
+                      </span>
+                    </TabsTab>
+                  );
+                })}
+              </TabsList>
+            </Tabs>
 
             <Field>
-              <FieldLabel>Company / handle</FieldLabel>
+              <FieldLabel className="text-base sm:text-base">Company / handle</FieldLabel>
               <Input
                 nativeInput
                 value={ownerName}
@@ -171,7 +178,7 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
               />
             </Field>
             <Field>
-              <FieldLabel>URL</FieldLabel>
+              <FieldLabel className="text-base sm:text-base">URL</FieldLabel>
               <Input
                 nativeInput
                 value={ownerUrl}
@@ -180,23 +187,13 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
               />
             </Field>
             <Field>
-              <FieldLabel>War cry</FieldLabel>
+              <FieldLabel className="text-base sm:text-base">Slogan</FieldLabel>
               <Input
                 nativeInput
                 value={warCry}
                 maxLength={60}
                 onChange={(e) => setWarCry(e.target.value)}
                 placeholder="Mars is ours"
-              />
-            </Field>
-            <Field>
-              <FieldLabel>Email for outbid alerts</FieldLabel>
-              <Input
-                nativeInput
-                type="email"
-                value={ownerEmail}
-                onChange={(e) => setOwnerEmail(e.target.value)}
-                placeholder="you@colony.dev"
               />
             </Field>
 
@@ -220,7 +217,7 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
           <SheetFooter className="flex-col sm:flex-col">
             <Button
               size="lg"
-              className="w-full"
+              className="w-full text-lg sm:text-lg"
               disabled={!payments.paddle || Boolean(busy)}
               loading={busy === "paddle"}
               onClick={() => submit("paddle")}
@@ -230,7 +227,7 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
             <Button
               size="lg"
               variant="outline"
-              className="w-full"
+              className="w-full text-lg sm:text-lg"
               disabled={!payments.cryptomus || Boolean(busy)}
               loading={busy === "cryptomus"}
               onClick={() => submit("cryptomus")}
@@ -240,7 +237,7 @@ export function ClaimDrawer({ plot, payments, onClose, onClaimed }: Props) {
             {payments.devSimulate && (
               <Button
                 variant="outline"
-                className="w-full border-dashed"
+                className="w-full border-dashed text-base sm:text-base"
                 disabled={Boolean(busy)}
                 loading={busy === "dev"}
                 onClick={() => submit("dev")}

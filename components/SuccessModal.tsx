@@ -3,6 +3,7 @@
 import { claimTweet, tweetIntentUrl } from "@/lib/tweets";
 import type { PlotRecord } from "@/lib/types";
 import { formatUsd } from "@/lib/pricing";
+import { SuccessCheck } from "@/components/SuccessCheck";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,18 +25,19 @@ export function SuccessModal({ plot, onClose }: Props) {
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="items-center text-center">
+          <SuccessCheck />
           <Badge variant="success">Territory secured</Badge>
           <DialogTitle>{plot.name} is yours</DialogTitle>
           <DialogDescription>
             You hold it for {formatUsd(plot.currentPriceCents)} until someone pays more.
           </DialogDescription>
         </DialogHeader>
-        <p className="px-6 text-muted-foreground text-xs leading-relaxed">{text}</p>
-        <DialogFooter variant="bare">
+        <p className="px-6 text-[13px] leading-relaxed text-muted-foreground">{text}</p>
+        <DialogFooter variant="bare" className="flex-col sm:flex-col">
           <Button
             size="lg"
-            className="w-full sm:w-full"
+            className="w-full"
             render={<a href={tweetIntentUrl(text)} target="_blank" rel="noreferrer" />}
           >
             Post to X

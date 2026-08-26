@@ -21,7 +21,13 @@ function readOwned(): Record<string, string> {
   }
 }
 
-export function LiveToasts({ plots }: { plots: PlotRecord[] }) {
+export function LiveToasts({
+  plots,
+  ignoreSlug = null,
+}: {
+  plots: PlotRecord[];
+  ignoreSlug?: string | null;
+}) {
   const prev = useRef(new Map(plots.map((p) => [p.slug, p])));
 
   useEffect(() => {
@@ -29,6 +35,7 @@ export function LiveToasts({ plots }: { plots: PlotRecord[] }) {
     for (const plot of plots) {
       const before = prev.current.get(plot.slug);
       if (!before) continue;
+      if (plot.slug === ignoreSlug) continue;
       if (plot.ownerName && plot.ownerName !== before.ownerName) {
         const stolen = Boolean(
           before.ownerName && owned[plot.slug] && owned[plot.slug] !== (plot.ownerEmail || ""),
@@ -54,7 +61,7 @@ export function LiveToasts({ plots }: { plots: PlotRecord[] }) {
     }
     localStorage.setItem(OWNED_KEY, JSON.stringify(owned));
     prev.current = new Map(plots.map((p) => [p.slug, p]));
-  }, [plots]);
+  }, [plots, ignoreSlug]);
 
   return null;
 }
