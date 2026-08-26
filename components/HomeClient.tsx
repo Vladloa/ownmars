@@ -70,10 +70,10 @@ export function HomeClient({ initialPlots, payments, supabaseEnabled }: Props) {
 
     let cancelled = false;
     async function showSuccess() {
-      // Webhook may land a moment after the redirect.
-      for (let i = 0; i < 8; i++) {
+      // Webhook can lag a few seconds behind the Whop redirect.
+      for (let i = 0; i < 20; i++) {
         try {
-          const res = await fetch("/api/plots", { cache: "no-store" });
+          const res = await fetch(`/api/plots?ts=${Date.now()}`, { cache: "no-store" });
           const json = await res.json();
           const next = (json.plots as PlotRecord[] | undefined) ?? [];
           if (cancelled) return;
@@ -89,7 +89,7 @@ export function HomeClient({ initialPlots, payments, supabaseEnabled }: Props) {
         } catch {
           // retry
         }
-        await new Promise((r) => window.setTimeout(r, 700));
+        await new Promise((r) => window.setTimeout(r, 1000));
       }
       if (!cancelled) {
         // Fall back to the claim drawer if fulfillment is still pending.
