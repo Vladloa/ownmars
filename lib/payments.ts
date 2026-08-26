@@ -1,5 +1,5 @@
 import { createHmac, createHash, timingSafeEqual } from "crypto";
-import { appUrl, env, hasCryptomus, hasPaddle, hasWhop, paddleSandbox } from "./env";
+import { appUrl, env, hasCryptomus, hasPaddle, hasWhop, paddleSandbox, whopApiBase } from "./env";
 
 export function paymentStatus() {
   return {
@@ -10,7 +10,7 @@ export function paymentStatus() {
   };
 }
 
-export async function createWhopCheckout(opts: {
+type WhopCheckoutOpts = {
   slug: string;
   plotName: string;
   amountCents: number;
@@ -18,27 +18,113 @@ export async function createWhopCheckout(opts: {
   ownerUrl: string;
   warCry: string;
   ownerEmail: string;
-}) {
+};
+
+function whopHeaders() {
+  return {
+    Authorization: `Bearer ${env("WHOP_API_KEY")}`,
+    "Content-Type": "application/json",
+  };
+}
+
+function claimMetadata(opts: WhopCheckoutOpts) {
+  return {
+    slug: opts.slug,
+    amountCents: String(opts.amountCents),
+    ownerName: opts.ownerName,
+    ownerUrl: opts.ownerUrl,
+    warCry: opts.warCry,
+    ownerEmail: opts.ownerEmail,
+  };
+}
+
+async function createWhopPlan(opts: WhopCheckoutOpts) {
+  const price = opts.amountCents / 100;
+  const productId = env("WHOP_PRODUCT_ID");
+  const body: Record<string, unknown> = {
+    company_id: env("WHOP_COMPANY_ID"),
+    plan_type: "one_time",
+    currency: "usd",
+    initial_price: price,
+    title: `OwnMars · ${opts.plotName}`,
+    description: `Claim ${opts.plotName} for $${price.toFixed(2)}`,
+    visibility: "visible",
+  };
+  if (productId) body.product_id = productId;
+  const res = await fetch(`${whopApiBase()}/plans`, {
+    method: "POST",
+    headers: whopHeaders(),
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json()) as {
+    id?: string;
+    purchase_url?: string;
+    error?: { message?: string };
+    message?: string;
+  };
+  if (!res.ok || !json.id) {
+    return {
+      ok: false as const,
+      error: json.error?.message || json.message || "Whop plan failed",
+    };
+  }
+  return { ok: true as const, planId: json.id, purchaseUrl: json.purchase_url };
+}
+
+export async function createWhopCheckout(opts: WhopCheckoutOpts) {
   if (!hasWhop()) return { ok: false as const, error: "Whop is not configured" };
   const price = opts.amountCents / 100;
-  const res = await fetch("https://api.whop.com/api/v1/checkout_configurations", {
+  const base = whopApiBase();
+  const productId = env("WHOP_PRODUCT_ID");
+  const metadata = claimMetadata(opts);
+  const redirectUrl = `${appUrl()}/?claimed=${opts.slug}`;
+
+  // Sandbox (and some company keys) reject inline account_id plans.
+  // Create a one-time plan, then wrap it in a checkout configuration for metadata.
+  if (productId || base.includes("sandbox-api.whop.com")) {
+    const plan = await createWhopPlan(opts);
+    if (!plan.ok) return plan;
+    const res = await fetch(`${base}/checkout_configurations`, {
+      method: "POST",
+      headers: whopHeaders(),
+      body: JSON.stringify({
+        mode: "payment",
+        plan_id: plan.planId,
+        redirect_url: redirectUrl,
+        metadata,
+      }),
+    });
+    const json = (await res.json()) as {
+      id?: string;
+      purchase_url?: string;
+      error?: { message?: string };
+      message?: string;
+    };
+    if (!res.ok || !json.purchase_url) {
+      // Fallback to the plan purchase URL if configuration create fails.
+      if (plan.purchaseUrl) {
+        return { ok: true as const, checkoutUrl: plan.purchaseUrl, checkoutId: plan.planId };
+      }
+      return {
+        ok: false as const,
+        error: json.error?.message || json.message || "Whop checkout failed",
+      };
+    }
+    return {
+      ok: true as const,
+      checkoutUrl: json.purchase_url,
+      checkoutId: json.id,
+    };
+  }
+
+  const res = await fetch(`${base}/checkout_configurations`, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${env("WHOP_API_KEY")}`,
-      "Content-Type": "application/json",
-    },
+    headers: whopHeaders(),
     body: JSON.stringify({
       account_id: env("WHOP_COMPANY_ID"),
       mode: "payment",
-      redirect_url: `${appUrl()}/?claimed=${opts.slug}`,
-      metadata: {
-        slug: opts.slug,
-        amountCents: String(opts.amountCents),
-        ownerName: opts.ownerName,
-        ownerUrl: opts.ownerUrl,
-        warCry: opts.warCry,
-        ownerEmail: opts.ownerEmail,
-      },
+      redirect_url: redirectUrl,
+      metadata,
       plan: {
         plan_type: "one_time",
         currency: "usd",

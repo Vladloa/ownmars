@@ -24,8 +24,8 @@ export async function POST(req: Request) {
 
   const event = JSON.parse(raw) as WhopPaymentEvent;
   const type = event.type || event.action || "";
-  if (type !== "payment.succeeded") {
-    return NextResponse.json({ ok: true, ignored: true });
+  if (type !== "payment.succeeded" && type !== "payment_succeeded" && type !== "app_payment_succeeded") {
+    return NextResponse.json({ ok: true, ignored: true, type });
   }
 
   const meta = event.data?.metadata ?? {};
