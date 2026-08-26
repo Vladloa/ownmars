@@ -4,6 +4,7 @@ import "./globals.css";
 import { DataFast } from "@/components/DataFast";
 import { Plausible } from "@/components/Plausible";
 import { Providers } from "@/components/Providers";
+import { WhopPixel } from "@/components/WhopPixel";
 
 const sans = Barlow_Condensed({
   subsets: ["latin"],
@@ -27,6 +28,7 @@ export default function RootLayout({
       <body className={`${sans.variable} relative h-svh overflow-hidden overscroll-none antialiased`}>
         <div className="relative isolate flex h-svh min-h-0 flex-col overflow-hidden">
           <Providers>
+            <WhopPixel />
             <DataFast />
             <Plausible />
             {children}
